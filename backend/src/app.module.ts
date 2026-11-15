@@ -13,6 +13,7 @@ import { StockModule } from './stock/stock.module';
 import { AssetsModule } from './assets/assets.module';
 import { PartnersModule } from './partners/partners.module';
 import { ExportModule } from './export/export.module';
+import { HealthController } from './health/health.controller';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -32,6 +33,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     PartnersModule,
     ExportModule,
   ],
+  controllers: [HealthController],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

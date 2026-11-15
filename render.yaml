@@ -1,0 +1,31 @@
+# Blueprint do Render — cria a API do Pacioli automaticamente.
+# No Render: New + > Blueprint > conecte o repositório m9ts/Pacioli.
+services:
+  - type: web
+    name: pacioli-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      # Conexão pooled (com -pooler) do Neon — copie de .env.local do Neon
+      - key: DATABASE_URL
+        sync: false
+      # Conexão direta do Neon — usada pelo prisma migrate deploy no build
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      # Segredo gerado automaticamente pelo Render
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: AUTH_COOKIE_NAME
+        value: sc_token
+      # URL final do site no Cloudflare (defina depois do deploy do site)
+      - key: WEB_URL
+        sync: false
