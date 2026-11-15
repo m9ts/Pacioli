@@ -1,0 +1,547 @@
+// Prisma schema — Simulador Educacional de Contabilidade Empresarial
+// Banco: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Usuários e controle de acesso
+// ─────────────────────────────────────────────────────────────
+
+enum RoleName {
+  ADMIN
+  PROFESSOR
+  ALUNO
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        RoleName @unique
+  label       String
+  description String?
+  createdAt   DateTime @default(now())
+
+  users    User[]
+  members  CompanyMember[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  companies   Company[]       @relation("CompanyOwner")
+  memberships CompanyMember[]
+  entries     JournalEntry[]
+  auditLogs   AuditLog[]
+  periodsClosed AccountingPeriod[] @relation("PeriodClosedBy")
+}
+
+model CompanyMember {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  roleId    String?
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role    Role?   @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+}
+
+enum CompanyStatus {
+  DRAFT
+  ACTIVE
+}
+
+enum CompanySegment {
+  COMERCIO
+  SERVICOS
+  INDUSTRIA
+  OUTROS
+}
+
+model Company {
+  id                String         @id @default(cuid())
+  ownerId           String
+  legalName         String
+  tradeName         String
+  cnpj              String?
+  stateRegistration String?
+  cityRegistration  String?
+  zipCode           String?
+  street            String?
+  number            String?
+  complement        String?
+  district          String?
+  city              String?
+  state             String?
+  phone             String?
+  email             String?
+  segment           CompanySegment @default(COMERCIO)
+  activity          String?
+  openingDate       DateTime
+  responsibleName   String
+  responsibleCpf    String?
+  initialCapital    Decimal        @db.Decimal(18, 2)
+  status            CompanyStatus  @default(DRAFT)
+  openingCompletedAt DateTime?
+  /// Permite saídas de estoque com saldo negativo (configuração do administrador).
+  allowNegativeStock Boolean       @default(false)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  owner       User             @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members     CompanyMember[]
+  periods     AccountingPeriod[]
+  accounts    Account[]
+  entries     JournalEntry[]
+  products    Product[]
+  movements   StockMovement[]
+  assets      Asset[]
+  customers   Customer[]
+  suppliers   Supplier[]
+  auditLogs   AuditLog[]
+  depreciationRecords DepreciationRecord[]
+
+  @@index([ownerId])
+  @@index([legalName])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Períodos contábeis
+// ─────────────────────────────────────────────────────────────
+
+enum PeriodStatus {
+  OPEN
+  CLOSED
+}
+
+model AccountingPeriod {
+  id        String       @id @default(cuid())
+  companyId String
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    PeriodStatus @default(OPEN)
+  closedAt  DateTime?
+  closedById String?
+  createdAt DateTime     @default(now())
+
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  closedBy User?   @relation("PeriodClosedBy", fields: [closedById], references: [id])
+  entries JournalEntry[]
+
+  @@index([companyId, startDate, endDate])
+  @@index([companyId, status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Plano de contas
+// ─────────────────────────────────────────────────────────────
+
+enum AccountClassification {
+  ATIVO
+  PASSIVO
+  PATRIMONIO_LIQUIDO
+  RECEITA
+  CUSTO
+  DESPESA
+}
+
+enum AccountNature {
+  DEVEDORA
+  CREDORA
+}
+
+enum AccountType {
+  SINTETICA
+  ANALITICA
+}
+
+enum StatementGroup {
+  ATIVO_CIRCULANTE
+  ATIVO_NAO_CIRCULANTE
+  PASSIVO_CIRCULANTE
+  PASSIVO_NAO_CIRCULANTE
+  PATRIMONIO_LIQUIDO
+  RESULTADO
+}
+
+enum DreGroup {
+  RECEITA_BRUTA
+  DEDUCAO_RECEITA
+  CMV
+  DESPESA_ADMINISTRATIVA
+  DESPESA_VENDAS
+  DESPESA_FINANCEIRA
+  RECEITA_FINANCEIRA
+  OUTRAS_RECEITAS
+  OUTRAS_DESPESAS
+}
+
+model Account {
+  id            String                 @id @default(cuid())
+  companyId     String
+  code          String
+  name          String
+  description   String?
+  classification AccountClassification
+  nature        AccountNature
+  type          AccountType
+  statementGroup StatementGroup?
+  dreGroup      DreGroup?
+  /// Código de referência usado pelas rotinas automáticas (ex.: CAIXA, ESTOQUE).
+  referenceCode String?
+  isSystem      Boolean                @default(false)
+  active        Boolean                @default(true)
+  parentId      String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parent   Account? @relation("AccountTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children Account[] @relation("AccountTree")
+  lines    JournalEntryLine[]
+  products Product[] @relation("ProductInventoryAccount")
+  productRevenue Product[] @relation("ProductRevenueAccount")
+  productCmv Product[] @relation("ProductCmvAccount")
+  assetAccount Asset[] @relation("AssetAccount")
+  assetDepreciationAccount Asset[] @relation("AssetDepreciationAccount")
+  assetExpenseAccount Asset[] @relation("AssetExpenseAccount")
+
+  @@unique([companyId, code])
+  @@unique([companyId, referenceCode])
+  @@index([companyId, parentId])
+  @@index([companyId, classification])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Livro Diário
+// ─────────────────────────────────────────────────────────────
+
+enum JournalSource {
+  MANUAL
+  ABERTURA
+  SALDO_INICIAL
+  COMPRA
+  VENDA
+  AJUSTE_ESTOQUE
+  DEVOLUCAO
+  AQUISICAO_ATIVO
+  BAIXA_ATIVO
+  DEPRECIACAO
+  ENCERRAMENTO
+  ESTORNO
+}
+
+model JournalEntry {
+  id            String        @id @default(cuid())
+  companyId     String
+  periodId      String
+  number        Int
+  date          DateTime
+  history       String
+  source        JournalSource @default(MANUAL)
+  sourceId      String?
+  totalDebit    Decimal       @db.Decimal(18, 2)
+  totalCredit   Decimal       @db.Decimal(18, 2)
+  createdById   String?
+  createdAt     DateTime      @default(now())
+  reversalOfId  String?       @unique
+  reverseReason String?
+  stockMovements StockMovement[]
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  period    AccountingPeriod @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  createdBy User?    @relation(fields: [createdById], references: [id])
+  lines     JournalEntryLine[]
+  reversalOf JournalEntry? @relation("EntryReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversedBy JournalEntry? @relation("EntryReversal")
+
+  @@unique([companyId, number])
+  @@index([companyId, date])
+  @@index([companyId, source])
+  @@index([periodId])
+}
+
+model JournalEntryLine {
+  id          String  @id @default(cuid())
+  entryId     String
+  accountId   String
+  debit       Decimal @db.Decimal(18, 2) @default(0)
+  credit      Decimal @db.Decimal(18, 2) @default(0)
+  description String?
+  position    Int     @default(0)
+
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([entryId])
+  @@index([accountId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Estoque
+// ─────────────────────────────────────────────────────────────
+
+model Product {
+  id         String  @id @default(cuid())
+  companyId  String
+  code       String
+  name       String
+  description String?
+  category   String
+  unit       String  @default("UN")
+  quantity   Decimal @db.Decimal(18, 3) @default(0)
+  minimumStock Decimal @db.Decimal(18, 3) @default(0)
+  averageCost Decimal @db.Decimal(18, 4) @default(0)
+  salePrice  Decimal @db.Decimal(18, 2) @default(0)
+  active     Boolean @default(true)
+  inventoryAccountId String
+  revenueAccountId   String?
+  revenueAccount Account? @relation("ProductRevenueAccount", fields: [revenueAccountId], references: [id], onDelete: SetNull)
+  cmvAccountId       String?
+  cmvAccount Account? @relation("ProductCmvAccount", fields: [cmvAccountId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  inventoryAccount Account @relation("ProductInventoryAccount", fields: [inventoryAccountId], references: [id], onDelete: Restrict)
+  movements StockMovement[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+enum StockMovementType {
+  COMPRA
+  VENDA
+  ENTRADA
+  SAIDA
+  AJUSTE
+  DEVOLUCAO_VENDA
+  DEVOLUCAO_COMPRA
+  ESTORNO
+}
+
+enum PaymentMethod {
+  DINHEIRO
+  BANCO
+  A_PRAZO
+}
+
+enum StockMovementStatus {
+  CONFIRMADO
+  ESTORNADO
+}
+
+model StockMovement {
+  id          String             @id @default(cuid())
+  companyId   String
+  productId   String
+  type        StockMovementType
+  status      StockMovementStatus @default(CONFIRMADO)
+  date        DateTime
+  quantity    Decimal            @db.Decimal(18, 3)
+  unitCost    Decimal            @db.Decimal(18, 4)
+  totalValue  Decimal            @db.Decimal(18, 2)
+  balanceAfter Decimal           @db.Decimal(18, 3)
+  paymentMethod PaymentMethod    @default(DINHEIRO)
+  documentNumber String?
+  description String?
+  customerId  String?
+  supplierId  String?
+  journalEntryId String?
+  reversalOfId String?           @unique
+  createdById String?
+  createdAt   DateTime           @default(now())
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  customer  Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  supplier  Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  entry     JournalEntry? @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+  reversalOf StockMovement? @relation("StockReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversedBy StockMovement? @relation("StockReversal")
+
+  @@index([companyId, date])
+  @@index([productId, date])
+  @@index([companyId, type])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Ativos e depreciação
+// ─────────────────────────────────────────────────────────────
+
+enum AssetCategory {
+  MOVEIS_UTENSILIOS
+  MAQUINAS_EQUIPAMENTOS
+  VEICULOS
+  INFORMATICA
+  IMOVEIS
+  OUTROS
+}
+
+enum AssetStatus {
+  ATIVO
+  TRANSFERIDO
+  BAIXADO
+}
+
+enum DepreciationMethod {
+  LINEAR
+}
+
+enum AcquisitionMethod {
+  A_VISTA
+  A_PRAZO
+  FINANCIAMENTO
+  INTEGRALIZACAO_CAPITAL
+}
+
+model Asset {
+  id               String          @id @default(cuid())
+  companyId        String
+  code             String
+  name             String
+  category         AssetCategory
+  description      String?
+  acquisitionDate  DateTime
+  acquisitionValue Decimal         @db.Decimal(18, 2)
+  supplierId       String?
+  supplierName     String?
+  location         String?
+  assetAccountId   String
+  depreciationAccountId String?
+  depreciationExpenseAccountId String?
+  acquisitionMethod AcquisitionMethod @default(A_VISTA)
+  usefulLifeMonths Int
+  residualValue    Decimal         @db.Decimal(18, 2) @default(0)
+  depreciationMethod DepreciationMethod @default(LINEAR)
+  accumulatedDepreciation Decimal @db.Decimal(18, 2) @default(0)
+  status           AssetStatus     @default(ATIVO)
+  disposalDate     DateTime?
+  disposalValue    Decimal?         @db.Decimal(18, 2)
+  journalEntryId   String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier      Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  assetAccount  Account       @relation("AssetAccount", fields: [assetAccountId], references: [id], onDelete: Restrict)
+  depreciationAccount Account? @relation("AssetDepreciationAccount", fields: [depreciationAccountId], references: [id], onDelete: Restrict)
+  depreciationExpenseAccount Account? @relation("AssetExpenseAccount", fields: [depreciationExpenseAccountId], references: [id], onDelete: Restrict)
+  records       DepreciationRecord[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([companyId, status])
+}
+
+enum DepreciationStatus {
+  PREVISTO
+  CONTABILIZADO
+  ESTORNADO
+}
+
+model DepreciationRecord {
+  id            String   @id @default(cuid())
+  companyId     String
+  assetId       String
+  referenceYear Int
+  referenceMonth Int
+  date          DateTime
+  openingValue  Decimal  @db.Decimal(18, 2)
+  depreciationAmount Decimal @db.Decimal(18, 2)
+  accumulatedDepreciation Decimal @db.Decimal(18, 2)
+  bookValue     Decimal  @db.Decimal(18, 2)
+  status        DepreciationStatus @default(PREVISTO)
+  journalEntryId String?
+  createdAt     DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  asset   Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, referenceYear, referenceMonth])
+  @@index([companyId, date])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Parceiros comerciais
+// ─────────────────────────────────────────────────────────────
+
+model Customer {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  document  String?
+  email     String?
+  phone     String?
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  movements StockMovement[]
+
+  @@index([companyId, name])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  document  String?
+  email     String?
+  phone     String?
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  movements StockMovement[]
+  assets    Asset[]
+
+  @@index([companyId, name])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auditoria
+// ─────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String?
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  description String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([userId, createdAt])
+}

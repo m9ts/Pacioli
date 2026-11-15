@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-[#faf7f2] font-body text-[#4a3526] text-body antialiased;
+}
+
+/* Baloo 2 para títulos e subtítulos */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-baloo), var(--font-nunito), cursive;
+  letter-spacing: 0.005em;
+}
+
+/* Números e valores monetários: mesma família, mas sem quebrar linha */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: #c98f3d33;
+}
+
+/* Scrollbar discreta em tons de papel */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d6bd9c transparent;
+}
+
+/* Transições suaves de página/telas da home */
+.screen-enter {
+  animation: fade-up 0.45s ease-out both;
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

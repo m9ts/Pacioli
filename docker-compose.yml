@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pacioli-db
+    environment:
+      POSTGRES_USER: contabil
+      POSTGRES_PASSWORD: contabil
+      POSTGRES_DB: contabil_educacional
+    ports:
+      - '5433:5432'
+    volumes:
+      - pacioli-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U contabil -d contabil_educacional']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pacioli-pgdata:
