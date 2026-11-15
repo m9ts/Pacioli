@@ -34,55 +34,62 @@ O `.gitignore` já protege `.env`, `node_modules`, `.next`, `dist` e artefatos d
 
 ## 2. Banco de dados no Neon (gratuito)
 
-1. Crie uma conta em <https://neon.com> (não pede cartão).
-2. Crie um projeto (região mais próxima, ex.: `aws/aws-sa-east-1` para o Brasil).
-3. Copie a **connection string** (formato
-   `postgresql://usuario:senha@ep-xxx.aws.neon.tech/neondb?sslmode=require`).
-4. Para migrações, o Prisma precisa da conexão **direta** (sem pool): no painel do Neon,
-   no seletor do endpoint, desmarque "Pooled connection" ou troque o host
-   `ep-xxx-pool` por `ep-xxx` ao rodar `prisma migrate deploy`.
+O jeito mais rápido é a **CLI do Neon**, que cria o projeto, provisiona o Postgres
+e puxa as variáveis para `.env.local`:
 
-Aplicar o schema e os dados demonstrativos, a partir da raiz do projeto:
+```bash
+npm i -g neon@latest
+neon login            # abre o navegador para autorizar
+neon init -y --org-id <sua-org> --project-id <id-do-projeto> --branch production --services postgres
+neon deploy           # provisiona e atualiza .env.local (DATABASE_URL, DATABASE_URL_UNPOOLED)
+```
+
+O `neon init` também cria um `neon.ts` na raiz (política de branches) e instala as
+skills/plugins do Neon para agentes de código.
+
+Aplicar o schema e os dados demonstrativos (a partir de `backend/.env`, que deve
+conter `DATABASE_URL` — pooled — e `DATABASE_URL_UNPOOLED` — direta):
 
 ```bash
 cd backend
-# Cole a connection string do Neon em backend/.env (DATABASE_URL)
-npx prisma migrate deploy
-npx prisma db seed
+npx prisma migrate deploy   # usa directUrl (conexão direta) automaticamente
+npx prisma db seed          # rodar com DATABASE_URL apontando para a conexão DIRETA
 ```
+
+> **Dica**: o seed abre uma transação grande; contra bancos remotos o timeout
+> padrão de 5 s do Prisma pode estourar — o `seed.ts` já vem configurado com
+> `timeout: 60_000`.
 
 ---
 
-## 3. API no Render (gratuito)
+## 3. API no Render (gratuito, via Blueprint)
 
-1. Crie uma conta em <https://render.com> e clique em **New → Web Service**.
-2. Conecte o repositório do GitHub e configure:
+O arquivo `render.yaml` na raiz do repositório descreve o serviço — o Render
+detecta e cria tudo automaticamente:
 
-   | Campo            | Valor                                        |
-   | ---------------- | -------------------------------------------- |
-   | Root Directory   | `backend`                                    |
-   | Build Command    | `npm install && npx prisma generate && npm run build` |
-   | Start Command    | `npm run start:prod`                         |
-   | Instance Type    | Free                                         |
+1. Entre em <https://dashboard.render.com> (pode usar SSO do GitHub).
+2. **New → Blueprint** e conecte o repositório (`m9ts/Pacioli`, branch `main`).
+3. Revise a configuração (serviço `pacioli-api`, raiz `backend`, health check
+   `/api/health`). As variáveis marcadas como `sync: false` pedem valores:
 
-3. Em **Environment Variables**, adicione:
+   | Variável | Valor |
+   | -------- | ----- |
+   | `DATABASE_URL` | connection string **pooled** do Neon (arquivo `.env.local`) |
+   | `DATABASE_URL_UNPOOLED` | connection string **direta** do Neon (usada nas migrações do build) |
+   | `WEB_URL` | URL final do site (pode deixar um placeholder e ajustar depois) |
 
-   ```
-   DATABASE_URL = <connection string do Neon>
-   JWT_SECRET   = <gere 32+ caracteres aleatórios, ex.: openssl rand -base64 32>
-   JWT_EXPIRES_IN = 7d
-   AUTH_COOKIE_NAME = sc_token
-   WEB_URL = <URL final do site, ex.: https://pacioli.pages.dev>
-   NODE_ENV = production
-   ```
+   O `JWT_SECRET` é gerado automaticamente pelo Render (`generateValue: true`).
+4. Clique em **Deploy Blueprint**. O build roda `npm ci && prisma generate &&
+   prisma migrate deploy && npm run build` e sobe com `npm run start:prod`.
 
-4. Ao terminar, o Render dá uma URL tipo `https://pacioli-api.onrender.com` —
-   **guarde-a**, o site vai usar como `API_URL`.
+5. Ao terminar, o Render dá uma URL tipo `https://pacioli-api.onrender.com` —
+   **guarde-a**, o site vai usar como `API_URL`. Teste:
+   `GET https://<sua-api>.onrender.com/api/health` deve responder `{"status":"ok"}`.
 
 > **Cold start**: o plano free hiberna a API após ~15 min sem uso; a primeira
 > request depois disso demora ~50 s. Para manter acordada, crie um ping
 > agendado gratuito em <https://cron-job.org> apontando para
-> `https://<sua-api>.onrender.com/api/auth/me` a cada 10 minutos.
+> `https://<sua-api>.onrender.com/api/health` a cada 10 minutos.
 
 ---
 
@@ -96,31 +103,33 @@ No diretório `frontend/`:
 
 ```bash
 npx @opennextjs/cloudflare migrate   # configura wrangler, scripts e .open-next
-npx wrangler login                   # autoriza sua conta Cloudflare
-npm run deploy                       # build + publicação
+npx wrangler login                   # autoriza sua conta Cloudflare (OAuth no navegador)
+npx wrangler r2 bucket create pacioli-web-opennext-cache   # cache incremental do OpenNext
 ```
 
-Configure as variáveis de ambiente do Worker (`wrangler.jsonc` → `vars`, ou no
-dashboard Cloudflare → Workers → Settings → Variables):
+> **Importante**: o rewrite de `/api/*` é resolvido no **build**, então a URL da
+> API precisa estar definida como variável de ambiente na hora do deploy.
+> No PowerShell:
 
+```powershell
+$env:API_URL = "https://pacioli-api.onrender.com"
+npm run deploy      # build + publicação do Worker (pacioli-web)
 ```
-API_URL = <URL da API no Render, ex.: https://pacioli-api.onrender.com>
-NEXT_PUBLIC_API_URL = <mesma URL>
-```
 
-Também é possível conectar o repositório do GitHub no dashboard do Cloudflare
-(Workers → Create → Connect Git) para deploy automático a cada push.
+O `wrangler.jsonc` já vem configurado com: assets, binding R2 de cache,
+`nodejs_compat` e self-reference de service binding. O app não usa
+`next/image`, então o binding opcional de imagens foi removido (exige plano pago).
 
-> **Alternativa mais simples**: como o app é Next.js puro, hospedar o front-end na
-> **Vercel** (plano free) dispensa o adaptador — basta importar o repositório e
-> definir `API_URL`. Se preferir esse caminho, pule esta etapa e use a Vercel.
+> O `NEXT_PUBLIC_API_URL` não é necessário: o front só fala com `/api/*`
+> (same-origin, via rewrite) — sem CORS.
 
 ---
 
 ## 5. Checklist final
 
-- [ ] `backend/.env` no Render com `DATABASE_URL` do Neon e `JWT_SECRET` forte
-- [ ] Migrações aplicadas no Neon (`prisma migrate deploy`) e seed opcional
-- [ ] `WEB_URL` da API apontando para o domínio final do site
-- [ ] `API_URL` do site apontando para a URL da API no Render
+- [ ] Blueprint do Render aplicado com `DATABASE_URL` / `DATABASE_URL_UNPOOLED` do Neon
+- [ ] Migrações aplicadas pelo próprio build do Render (`prisma migrate deploy` + seed opcional)
+- [ ] `GET https://<sua-api>.onrender.com/api/health` respondendo `{"status":"ok"}`
+- [ ] Deploy do site feito com `API_URL` apontando para a URL da API no Render
+- [ ] `WEB_URL` da API atualizada para o domínio final do site (no Render, dispara redeploy)
 - [ ] Login de teste após o deploy (ou entrada como visitante pela home)
