@@ -342,7 +342,10 @@ async function main() {
   const companyId = company.id;
   console.log('  → Empresa:', company.tradeName);
 
-  await prisma.$transaction(async (tx) => {
+  // Timeout maior: o seed executa centenas de comandos; o padrão do Prisma
+  // (5s) é insuficiente contra bancos remotos (ex.: Neon) por causa da latência.
+  await prisma.$transaction(
+    async (tx) => {
     // Plano de contas padrão
     await buildChart(companyId, tx);
 
@@ -646,7 +649,7 @@ async function main() {
       where: { id: companyId },
       data: { initialCapital: 60000 },
     });
-  });
+  }, { timeout: 60_000, maxWait: 10_000 });
 
   console.log('✔ Seed concluído: empresa demonstrativa com escrituração real.');
   console.log('  Logins: admin@pacioli.dev / professor@pacioli.dev / aluno@pacioli.dev (senha: pacioli123)');

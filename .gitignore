@@ -24,6 +24,9 @@ build/
 .wrangler/
 .dev.vars
 
+# Neon (contexto local do CLI)
+.neon/
+
 # Logs
 *.log
 npm-debug.log*
@@ -41,3 +44,4 @@ coverage/
 
 # Uploads temporários
 tmp/
+.neon
