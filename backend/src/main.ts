@@ -55,7 +55,11 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  // Swagger somente fora de produção: em produção ele exporia a superfície
+  // completa da API a qualquer visitante.
+  if (config.get('NODE_ENV') !== 'production') {
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = config.get<number>('PORT', 4000);
   await app.listen(port);

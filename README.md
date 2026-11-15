@@ -52,7 +52,7 @@ npx prisma db seed          # dados demonstrativos
 npm run start:dev           # API em http://localhost:4000/api
 ```
 
-Swagger: <http://localhost:4000/api/docs>
+Swagger (somente fora de produção): <http://localhost:4000/api/docs>
 
 ### 3. Front-end
 
@@ -72,24 +72,23 @@ apresenta o produto e, em seguida, duas opções — **Começar nova empresa** e
 **Carregar planilha (.xlsx ou .csv)**. Ambas criam uma sessão descartável de
 visitante (`POST /api/auth/guest`) para explorar o simulador sem cadastro.
 
-Contas de demonstração em `/login` (senha: `pacioli123`):
+Não há tela de login: o acesso é feito por **sessão de visitante** (descartável)
+ou por **registro livre** em `/registrar` — a sessão criada no registro também
+vem pronta via cookie httpOnly. Contas de demonstração existem no seed
+(`admin@pacioli.dev`, `professor@pacioli.dev`, `aluno@pacioli.dev`, senha
+`pacioli123`) e podem ser usadas pela API (`POST /api/auth/login`) durante o
+desenvolvimento.
 
-| E-mail                   | Papel      |
-| ------------------------ | ---------- |
-| `admin@pacioli.dev`      | Administrador |
-| `professor@pacioli.dev`  | Professor (somente leitura) |
-| `aluno@pacioli.dev`      | Aluno (dono da empresa demo "Padaria Pão Dourado") |
-
-Novos alunos se registram livremente em `/registrar`; professores precisam do
-código de convite (`TEACHER_INVITE_CODE` em `backend/.env`).
+> **Professores**: o registro com perfil de professor exige o código de convite
+> configurado em `TEACHER_INVITE_CODE` no ambiente do servidor — **não há valor
+> padrão**; sem a variável, o servidor recusa registros de professor.
 
 ## Principais fluxos
 
 1. **Começar pela landing** — `/` mostra o retrato de Pacioli e oferece
    *Começar nova empresa* (abre o cadastro já com sessão de visitante) ou
    *Carregar planilha* (importa `.xlsx`/`.csv` com colunas **Tipo · Conta ·
-   Descrição · Valor** e conclui a abertura automaticamente). Existe também um
-   botão discreto **Já tenho conta** que leva a `/login`.
+   Descrição · Valor** e conclui a abertura automaticamente).
 2. **Criar empresa** — *Minhas Empresas → Nova empresa*; o assistente de abertura
    cria o plano de contas padrão, o período contábil e os lançamentos de abertura
    (capital social e patrimônio inicial) em uma única transação.
@@ -122,7 +121,7 @@ backend/
     partners/        clientes e fornecedores
     export/          Excel e PDF
 frontend/
-  src/app/(auth)/    login e registro
+  src/app/(auth)/    registro
   src/app/(app)/     dashboard e módulos do sistema
   src/components/    shell, providers e componentes de UI
 ```
@@ -131,9 +130,26 @@ frontend/
 
 | Variável              | Padrão            | Uso                          |
 | --------------------- | ----------------- | ---------------------------- |
-| `DATABASE_URL`        | —                 | Conexão PostgreSQL           |
-| `JWT_SECRET`          | dev               | Assinatura dos tokens        |
+| `DATABASE_URL`        | —                 | Conexão PostgreSQL (pooled em produção, ex.: Neon) |
+| `DATABASE_URL_UNPOOLED` | —               | Conexão direta para migrações (Prisma `directUrl`) |
+| `JWT_SECRET`          | dev               | Assinatura dos tokens (32+ caracteres em produção) |
 | `JWT_EXPIRES_IN`      | `7d`              | Validade da sessão           |
 | `PORT`                | `4000`            | Porta da API                 |
 | `WEB_URL`             | `http://localhost:3000` | CORS do front          |
-| `TEACHER_INVITE_CODE` | `PACIOLI-PROF-2026` | Código de convite de professor |
+| `TEACHER_INVITE_CODE` | — (sem padrão)    | Código de convite de professor; sem ele, registros de professor são recusados |
+
+## Segurança
+
+Medidas já incorporadas ao código:
+
+- **Senhas** com bcrypt (custo 10) e política de tamanho no DTO.
+- **Sessões** via JWT em cookie `httpOnly` (`secure` em produção, `SameSite=Lax`).
+- **Isolamento por empresa**: todo acesso passa pelo guard `CompanyAccessGuard`,
+  que valida o cabeçalho `x-company-id` contra a participação do usuário.
+- **Validação de entrada** global (`ValidationPipe` com `whitelist`, que descarta
+  campos extras) e **sem SQL bruto** — o Prisma parametriza todas as consultas.
+- **Rate limit** global por IP (120 req/min), com limites mais rígidos em
+  `login` (10/min), `register` (5/min) e `guest` (20/min).
+- **Swagger desativado em produção** (disponível apenas com `NODE_ENV` ≠ `production`).
+- **Mensagens de erro** centralizadas, sem expor stack traces ao cliente.
+- O app **não utiliza LLM/IA**, portanto não há superfície de prompt injection.

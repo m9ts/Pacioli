@@ -15,6 +15,9 @@ import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class AuthService {
+  /** Hash bcrypt de um valor aleatório — usado apenas para equalizar o tempo
+   * de resposta quando o usuário não existe (evita enumeração por timing). */
+  private static readonly TIMING_DUMMY_HASH = bcrypt.hashSync('pacioli-timing-dummy', 10);
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -53,7 +56,15 @@ export class AuthService {
 
     let role: RoleName = RoleName.ALUNO;
     if (dto.role === 'PROFESSOR') {
-      const expected = this.config.get<string>('TEACHER_INVITE_CODE', 'PACIOLI-PROF-2026');
+      // Sem valor padrão: o código deve vir de TEACHER_INVITE_CODE no ambiente.
+      // Um default no código (documentado) permitiria a qualquer pessoa se
+      // registrar como professor em produção.
+      const expected = this.config.get<string>('TEACHER_INVITE_CODE');
+      if (!expected) {
+        throw new BadRequestException(
+          'Registro de professor indisponível: o servidor não possui código de convite configurado.',
+        );
+      }
       if (!dto.teacherCode || dto.teacherCode.trim().toUpperCase() !== expected.toUpperCase()) {
         throw new BadRequestException(
           'Código de convite de professor inválido. Solicite o código à coordenação do curso.',
@@ -90,7 +101,12 @@ export class AuthService {
       where: { email: dto.email },
       include: { role: true },
     });
-    if (!user || !user.active) throw new UnauthorizedException('E-mail ou senha inválidos.');
+    if (!user || !user.active) {
+      // Comparações com hash fictício mantêm o tempo de resposta uniforme e
+      // dificultam a enumeração de e-mails por diferença de latência.
+      await bcrypt.compare(dto.password, AuthService.TIMING_DUMMY_HASH);
+      throw new UnauthorizedException('E-mail ou senha inválidos.');
+    }
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('E-mail ou senha inválidos.');
