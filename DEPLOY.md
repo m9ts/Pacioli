@@ -112,7 +112,7 @@ npx wrangler r2 bucket create pacioli-web-opennext-cache   # cache incremental d
 > No PowerShell:
 
 ```powershell
-$env:API_URL = "https://pacioli-api.onrender.com"
+$env:API_URL = "https://pacioli-api-bs5n.onrender.com"
 npm run deploy      # build + publicação do Worker (pacioli-web)
 ```
 
