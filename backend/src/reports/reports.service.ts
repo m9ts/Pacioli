@@ -261,6 +261,7 @@ export class ReportsService {
     const totalDespesasOperacionais = Number(
       (despesasAdministrativas + despesasVendas).toFixed(2),
     );
+    const resultadoOperacional = Number((lucroBruto - totalDespesasOperacionais).toFixed(2));
     const resultadoAntesTributos = Number(
       (
         lucroBruto -
@@ -284,7 +285,9 @@ export class ReportsService {
         lucroBruto,
         despesasAdministrativas,
         despesasVendas,
+        despesasOperacionais: totalDespesasOperacionais,
         totalDespesasOperacionais,
+        resultadoOperacional,
         despesasFinanceiras,
         receitasFinanceiras,
         outrasReceitas,
