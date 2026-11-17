@@ -50,7 +50,6 @@ export default function RazaoPage() {
         totalDebit: number;
         totalCredit: number;
         closingBalance: number;
-        nature: string;
       };
     },
   });
@@ -135,7 +134,8 @@ export default function RazaoPage() {
               {ledger.data.account.code} — {ledger.data.account.name}
             </CardTitle>
             <CardDescription>
-              Natureza {ledger.data.nature.toLowerCase()} · saldo inicial {formatCurrency(ledger.data.openingBalance)}
+              Natureza {(ledger.data.account.nature ?? '').toLowerCase() || '—'} · saldo inicial{' '}
+              {formatCurrency(ledger.data.openingBalance)}
             </CardDescription>
           </CardHeader>
           <CardContent>

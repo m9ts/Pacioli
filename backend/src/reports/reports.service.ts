@@ -419,11 +419,7 @@ export class ReportsService {
       ),
       totalDebit: num(totalDebit),
       totalCredit: num(totalCredit),
-      closingBalance: num(
-        account.nature === AccountNature.DEVEDORA ? openingNet : openingNet.negated(),
-      ) === num(dec(0))
-        ? num(balance)
-        : num(balance),
+      closingBalance: num(balance),
       lines: items,
     };
   }
