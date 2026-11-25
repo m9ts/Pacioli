@@ -5,11 +5,14 @@ import Link from 'next/link';
 import {
   ArrowDownRight,
   ArrowUpRight,
+  BookText,
   Boxes,
   Building2,
+  CalendarClock,
   ClipboardList,
   Landmark,
   Scale,
+  ScrollText,
   TrendingUp,
   Warehouse,
 } from 'lucide-react';
@@ -38,6 +41,58 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 const PIE_COLORS = ['#12304f', '#2b5591', '#3a6bab', '#94b4d9', '#c9a227', '#e0b23c', '#875e1a'];
+
+// Os oito módulos exigidos pela disciplina, com uma frase explicando cada um.
+const MODULES = [
+  {
+    href: '/app/diario',
+    label: 'Livro Diário',
+    description: 'Registre as operações em partidas dobradas, na ordem do dia.',
+    icon: BookText,
+  },
+  {
+    href: '/app/razao',
+    label: 'Livro Razão',
+    description: 'Acompanhe a movimentação e o saldo de cada conta.',
+    icon: ScrollText,
+  },
+  {
+    href: '/app/balancete',
+    label: 'Balancete',
+    description: 'Confira débitos, créditos e saldos antes de fechar o período.',
+    icon: ClipboardList,
+  },
+  {
+    href: '/app/balanco',
+    label: 'Balanço Patrimonial',
+    description: 'Ativo, passivo e patrimônio líquido em uma data.',
+    icon: Scale,
+  },
+  {
+    href: '/app/dre',
+    label: 'DRE',
+    description: 'Receitas, custos e despesas até o resultado do exercício.',
+    icon: TrendingUp,
+  },
+  {
+    href: '/app/estoque',
+    label: 'Estoque',
+    description: 'Produtos com entradas e saídas contabilizadas automaticamente.',
+    icon: Boxes,
+  },
+  {
+    href: '/app/ativos',
+    label: 'Ativos',
+    description: 'Imobilizado: aquisição, transferência e baixa.',
+    icon: Warehouse,
+  },
+  {
+    href: '/app/depreciacao',
+    label: 'Depreciação',
+    description: 'Parcela mensal de cada bem, lançada no diário.',
+    icon: CalendarClock,
+  },
+];
 
 export default function DashboardPage() {
   const { company, loading: authLoading } = useAuth();
@@ -158,6 +213,33 @@ export default function DashboardPage() {
               Novo lançamento
             </Link>
           </Button>
+        </div>
+      </div>
+
+      {/* Acessos rápidos aos módulos da disciplina */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-h2 font-display text-navy-900">Módulos</h2>
+            <p className="text-body-sm text-slate-500">
+              Tudo o que a disciplina pede, a um clique de distância.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {MODULES.map((module) => (
+            <Link key={module.href} href={module.href} className="group">
+              <Card className="h-full transition-colors group-hover:border-navy-300">
+                <CardContent className="flex h-full flex-col gap-2 pt-5">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-navy-50 text-navy-700">
+                    <module.icon className="h-5 w-5" />
+                  </span>
+                  <p className="font-semibold text-navy-900">{module.label}</p>
+                  <p className="text-body-sm text-slate-500">{module.description}</p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
         </div>
       </div>
 
