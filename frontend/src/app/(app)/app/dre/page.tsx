@@ -50,6 +50,9 @@ interface DreSummary {
   tributos: number;
   resultadoLiquido: number;
   margemLiquida: number;
+  totalDespesasOperacionais?: number;
+  despesasAdministrativas?: number;
+  despesasVendas?: number;
 }
 interface DreData {
   from: string;
@@ -57,6 +60,20 @@ interface DreData {
   groups: DreGroup[];
   summary: DreSummary;
   previous: { from: string; to: string; summary: DreSummary } | null;
+}
+
+function normalizeSummary(summary: DreSummary): DreSummary {
+  const despesasOperacionais =
+    summary.despesasOperacionais ??
+    summary.totalDespesasOperacionais ??
+    (summary.despesasAdministrativas ?? 0) + (summary.despesasVendas ?? 0);
+  return {
+    ...summary,
+    despesasOperacionais,
+    resultadoOperacional:
+      summary.resultadoOperacional ??
+      Number((summary.lucroBruto - despesasOperacionais).toFixed(2)),
+  };
 }
 
 const SUMMARY_LINES: { key: keyof DreSummary | 'saldo'; label: string; signed?: 'deducao' | 'soma'; strong?: boolean }[] = [
@@ -90,7 +107,13 @@ export default function DrePage() {
       const { data } = await api.get<DreData>('/reports/dre', {
         params: { from: from || undefined, to: to || undefined, compare: compare ? 'true' : undefined },
       });
-      return data;
+      return {
+        ...data,
+        summary: normalizeSummary(data.summary),
+        previous: data.previous
+          ? { ...data.previous, summary: normalizeSummary(data.previous.summary) }
+          : null,
+      };
     },
   });
 
