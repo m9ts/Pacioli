@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -177,7 +178,7 @@ export class DepreciateDto {
   @Type(() => Number)
   @IsInt()
   @Min(1, { message: 'Informe o mês (1 a 12).' })
-  @Matches(/^(?:[1-9]|1[0-2])$/, { message: 'Mês inválido (1 a 12).' })
+  @Max(12, { message: 'Mês inválido (1 a 12).' })
   month: number;
 
   @ApiPropertyOptional({ description: 'Restringe a ativos específicos' })
