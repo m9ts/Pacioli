@@ -7,6 +7,7 @@ import {
   BookOpenCheck,
   BookText,
   Building2,
+  CalendarClock,
   ChevronsUpDown,
   ClipboardList,
   FileSpreadsheet,
@@ -17,6 +18,7 @@ import {
   Package,
   ScrollText,
   Settings,
+  TrendingUp,
   Truck,
   Users,
   Warehouse,
@@ -39,45 +41,78 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const NAV_ITEMS = [
-  { href: '/app/dashboard', label: 'Painel', icon: LayoutDashboard },
-  { href: '/app/diario', label: 'Livro Diário', icon: BookText },
-  { href: '/app/razao', label: 'Livro Razão', icon: ScrollText },
-  { href: '/app/balancete', label: 'Balancete', icon: ClipboardList },
-  { href: '/app/balanco', label: 'Balanço Patrimonial', icon: FileSpreadsheet },
-  { href: '/app/dre', label: 'DRE & Encerramento', icon: FileSpreadsheet },
-  { href: '/app/plano-de-contas', label: 'Plano de Contas', icon: BookOpenCheck },
-  { href: '/app/estoque', label: 'Estoque', icon: Package },
-  { href: '/app/ativos', label: 'Ativos & Depreciação', icon: Warehouse },
-  { href: '/app/cadastros', label: 'Clientes & Fornecedores', icon: Truck },
-  { href: '/app/empresas', label: 'Minhas Empresas', icon: Building2 },
-  { href: '/app/importar-planilha', label: 'Importar Planilha', icon: FileUp },
-  { href: '/app/configuracoes', label: 'Configurações', icon: Settings },
+const NAV_GROUPS = [
+  {
+    title: 'Visão geral',
+    items: [{ href: '/app/dashboard', label: 'Painel', icon: LayoutDashboard }],
+  },
+  {
+    title: 'Livros contábeis',
+    items: [
+      { href: '/app/diario', label: 'Livro Diário', icon: BookText },
+      { href: '/app/razao', label: 'Livro Razão', icon: ScrollText },
+    ],
+  },
+  {
+    title: 'Demonstrações',
+    items: [
+      { href: '/app/balancete', label: 'Balancete', icon: ClipboardList },
+      { href: '/app/balanco', label: 'Balanço Patrimonial', icon: FileSpreadsheet },
+      { href: '/app/dre', label: 'DRE', icon: TrendingUp },
+    ],
+  },
+  {
+    title: 'Operações',
+    items: [
+      { href: '/app/estoque', label: 'Estoque', icon: Package },
+      { href: '/app/ativos', label: 'Ativos', icon: Warehouse },
+      { href: '/app/depreciacao', label: 'Depreciação', icon: CalendarClock },
+    ],
+  },
+  {
+    title: 'Cadastros',
+    items: [
+      { href: '/app/plano-de-contas', label: 'Plano de Contas', icon: BookOpenCheck },
+      { href: '/app/cadastros', label: 'Clientes e Fornecedores', icon: Truck },
+      { href: '/app/empresas', label: 'Minhas Empresas', icon: Building2 },
+      { href: '/app/importar-planilha', label: 'Importar Planilha', icon: FileUp },
+      { href: '/app/configuracoes', label: 'Configurações', icon: Settings },
+    ],
+  },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
-    <nav className="flex flex-col gap-1">
-      {NAV_ITEMS.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-body-sm font-semibold transition-colors',
-              active
-                ? 'bg-navy-800 text-white'
-                : 'text-navy-200 hover:bg-navy-800/60 hover:text-white',
-            )}
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            {item.label}
-          </Link>
-        );
-      })}
+    <nav className="flex flex-col gap-3">
+      {NAV_GROUPS.map((group) => (
+        <div key={group.title}>
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-navy-400">
+            {group.title}
+          </p>
+          <div className="flex flex-col gap-0.5">
+            {group.items.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-body-sm font-semibold transition-colors',
+                    active
+                      ? 'bg-navy-800 text-white'
+                      : 'text-navy-200 hover:bg-navy-800/60 hover:text-white',
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 }
