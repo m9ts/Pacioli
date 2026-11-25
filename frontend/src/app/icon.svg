@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Pacioli">
+  <rect x="1" y="1" width="62" height="62" rx="14" fill="#452f1f" />
+  <rect x="2.25" y="2.25" width="59.5" height="59.5" rx="12.75" fill="none" stroke="#dca754" stroke-opacity="0.45" stroke-width="1.5" />
+  <path d="M32 23.4C26.6 20.1 18.6 19.5 12.6 21.5V42.3C18.6 40.3 26.6 40.9 32 44.2Z" fill="#f4ecdf" />
+  <path d="M32 23.4C37.4 20.1 45.4 19.5 51.4 21.5V42.3C45.4 40.3 37.4 40.9 32 44.2Z" fill="#f4ecdf" />
+  <path d="M32 23.4V44.2" stroke="#dca754" stroke-width="2.2" stroke-linecap="round" />
+  <g stroke="#d6bd9c" stroke-width="1.7" stroke-linecap="round">
+    <path d="M17.5 28.4h9.5" />
+    <path d="M17.5 33.4h9.5" />
+    <path d="M17.5 38.4h9.5" />
+    <path d="M37 28.4h9.5" />
+    <path d="M37 33.4h9.5" />
+    <path d="M37 38.4h9.5" />
+  </g>
+  <rect x="20" y="49.5" width="24" height="3.4" rx="1.7" fill="#dca754" />
+</svg>

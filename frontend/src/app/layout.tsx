@@ -19,7 +19,7 @@ const nunito = Nunito({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Pacioli — Contabilidade Empresarial Educacional',
+    default: 'Pacioli',
     template: '%s | Pacioli',
   },
   description:
