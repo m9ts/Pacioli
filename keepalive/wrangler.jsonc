@@ -1,0 +1,14 @@
+{
+	"$schema": "../frontend/node_modules/wrangler/config-schema.json",
+	"name": "pacioli-keepalive",
+	"main": "src/index.js",
+	// Compatibilidade com `Response.json()` e `ctx.waitUntil` no cron.
+	"compatibility_date": "2026-11-15",
+	"triggers": {
+		// A cada 10 minutos: o Render hiberna após ~15 min de inatividade.
+		"crons": ["*/10 * * * *"]
+	},
+	"vars": {
+		"API_URL": "https://pacioli-api-bs5n.onrender.com"
+	}
+}

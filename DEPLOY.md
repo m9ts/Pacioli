@@ -87,9 +87,17 @@ detecta e cria tudo automaticamente:
    `GET https://<sua-api>.onrender.com/api/health` deve responder `{"status":"ok"}`.
 
 > **Cold start**: o plano free hiberna a API após ~15 min sem uso; a primeira
-> request depois disso demora ~50 s. Para manter acordada, crie um ping
-> agendado gratuito em <https://cron-job.org> apontando para
-> `https://<sua-api>.onrender.com/api/health` a cada 10 minutos.
+> request depois disso demora ~50 s e o edge pode responder um desafio HTML em
+> vez do JSON. Para evitar isso, o repositório inclui o Worker `keepalive/`, que
+> faz `GET /api/health` a cada 10 minutos via Cron Trigger (gratuito):
+>
+> ```powershell
+> cd keepalive
+> ..\frontend\node_modules\.bin\wrangler deploy
+> ```
+>
+> Alternativa sem Worker: um ping agendado em <https://cron-job.org> apontando
+> para `https://<sua-api>.onrender.com/api/health` a cada 10 minutos.
 
 ---
 
@@ -133,3 +141,4 @@ O `wrangler.jsonc` já vem configurado com: assets, binding R2 de cache,
 - [ ] Deploy do site feito com `API_URL` apontando para a URL da API no Render
 - [ ] `WEB_URL` da API atualizada para o domínio final do site (no Render, dispara redeploy)
 - [ ] Login de teste após o deploy (ou entrada como visitante pela home)
+- [ ] Worker `keepalive` publicado (`crons: ["*/10 * * * *"]`) para a API não hibernar
