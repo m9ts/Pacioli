@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock, FileDown, FileSpreadsheet, Plus, TruckIcon, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -212,12 +213,17 @@ export default function AtivosPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-h1 font-display text-navy-900">Ativos & Depreciação</h1>
+          <h1 className="text-h1 font-display text-navy-900">Ativos</h1>
           <p className="text-body-sm text-slate-500">
-            Imobilizado da empresa com depreciação linear e baixa contabilizada.
+            Imobilizado da empresa: aquisição, transferência e baixa, sempre contabilizadas.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/app/depreciacao">
+              <CalendarClock className="h-4 w-4" /> Depreciação
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => exportReport('xlsx')}>
             <FileSpreadsheet className="h-4 w-4" /> Excel
           </Button>
