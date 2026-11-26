@@ -247,7 +247,7 @@ export default function ConfiguracoesPage() {
                   Períodos definem o exercício; o encerramento acontece na página da DRE.
                 </CardDescription>
               </div>
-              {company.canWrite && user?.role !== 'PROFESSOR' && (
+              {company.canWrite !== false && user?.role !== 'PROFESSOR' && (
                 <Button size="sm" onClick={() => setPeriodOpen(true)}>
                   <Plus className="h-4 w-4" /> Novo período
                 </Button>
