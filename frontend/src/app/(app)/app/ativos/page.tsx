@@ -237,14 +237,15 @@ export default function AtivosPage() {
               </Button>
               <Button
                 size="sm"
-                onClick={() =>
+                onClick={() => {
                   setAssetForm((prev) => ({
                     ...prev,
                     code: '',
                     name: '',
                     acquisitionValue: '',
-                  }))
-                }
+                  }));
+                  setAcquireOpen(true);
+                }}
               >
                 <Plus className="h-4 w-4" /> Novo ativo
               </Button>
