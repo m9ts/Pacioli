@@ -6,7 +6,6 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  Matches,
   Max,
   MaxLength,
   Min,
@@ -88,7 +87,7 @@ export class CreateAssetDto {
   @Type(() => Number)
   @IsInt()
   @Min(1, { message: 'A vida útil deve ser de pelo menos 1 mês.' })
-  @Matches(/^\d+$/, { message: 'Informe a vida útil em meses inteiros.' })
+  @Max(1200, { message: 'A vida útil deve ser de no máximo 1200 meses.' })
   usefulLifeMonths: number;
 
   @ApiPropertyOptional({ example: 0 })
