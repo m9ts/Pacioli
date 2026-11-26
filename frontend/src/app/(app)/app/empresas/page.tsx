@@ -234,7 +234,7 @@ export default function EmpresasPage() {
                     {active ? <Check className="h-4 w-4" /> : 'Selecionar'}
                     {active ? 'Selecionada' : ''}
                   </Button>
-                  {item.status === 'DRAFT' && item.canWrite && (
+                  {item.status === 'DRAFT' && item.accessRole !== 'PROFESSOR' && (
                     <Button variant="gold" size="sm" onClick={() => openWizard(item)}>
                       <ChevronsRight className="h-4 w-4" />
                       Concluir abertura
