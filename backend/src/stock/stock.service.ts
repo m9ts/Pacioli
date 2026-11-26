@@ -519,7 +519,28 @@ export class StockService {
             },
           },
           orderBy: { number: 'asc' },
+          include: { lines: true },
         });
+
+        // Valor que a movimentação adicionou (entrada) ou retirou (saída) do estoque,
+        // conforme as partidas contábeis geradas — base para restaurar o custo médio.
+        let inventoryEffect = dec(0);
+        for (const entry of entries) {
+          for (const line of entry.lines) {
+            if (line.accountId === movement.product.inventoryAccountId) {
+              inventoryEffect = inventoryEffect
+                .plus(dec(line.debit))
+                .minus(dec(line.credit));
+            }
+          }
+        }
+
+        const currentValue = currentQty.times(dec(movement.product.averageCost));
+        const newValue = currentValue.minus(inventoryEffect);
+        const newAvg = newQty.greaterThan(0)
+          ? newValue.div(newQty).toDecimalPlaces(4)
+          : dec(movement.product.averageCost);
+
         for (const entry of entries) {
           await this.journal.reverseInTransaction(tx, companyId, user.id, entry.id, dto.reason);
         }
@@ -544,7 +565,7 @@ export class StockService {
 
         await tx.product.update({
           where: { id: movement.productId },
-          data: { quantity: newQty },
+          data: { quantity: newQty, averageCost: newAvg },
         });
         await tx.stockMovement.update({
           where: { id: movement.id },
