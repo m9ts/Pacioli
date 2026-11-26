@@ -440,7 +440,13 @@ export class CompaniesService {
 
         await tx.company.update({
           where: { id },
-          data: { status: CompanyStatus.ACTIVE, openingCompletedAt: new Date() },
+          data: {
+            status: CompanyStatus.ACTIVE,
+            openingCompletedAt: new Date(),
+            // A abertura é a fonte da verdade: capital e data inicial vêm do período informado.
+            initialCapital: capitalAmount,
+            openingDate: start,
+          },
         });
 
         await this.audit.log(
