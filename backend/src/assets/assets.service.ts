@@ -6,6 +6,7 @@ import {
 import {
   AcquisitionMethod,
   AssetCategory,
+  AssetStatus,
   AccountType,
   DepreciationMethod,
   JournalSource,
@@ -223,9 +224,12 @@ export class AssetsService {
       const cost = dec(asset.acquisitionValue);
       const accumulated = dec(asset.records.reduce((acc, r) => acc.plus(r.depreciationAmount), dec(0)));
       const book = cost.minus(accumulated);
-      totalCost = totalCost.plus(cost);
-      totalDepreciation = totalDepreciation.plus(accumulated);
-      totalBook = totalBook.plus(book);
+      // Baixados permanecem na lista como histórico, mas não entram nos totais do imobilizado.
+      if (asset.status !== AssetStatus.BAIXADO) {
+        totalCost = totalCost.plus(cost);
+        totalDepreciation = totalDepreciation.plus(accumulated);
+        totalBook = totalBook.plus(book);
+      }
 
       return {
         id: asset.id,
@@ -253,7 +257,7 @@ export class AssetsService {
         cost: Number(totalCost.toFixed(2)),
         accumulatedDepreciation: Number(totalDepreciation.toFixed(2)),
         bookValue: Number(totalBook.toFixed(2)),
-        count: rows.length,
+        count: rows.filter((row) => row.status !== AssetStatus.BAIXADO).length,
       },
       categories: Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
     };
