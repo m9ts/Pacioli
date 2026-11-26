@@ -20,7 +20,7 @@ export interface CompanySummary {
   openingCompletedAt?: string | null;
   isOwner: boolean;
   accessRole: 'ADMIN' | 'PROFESSOR' | 'ALUNO';
-  canWrite: boolean;
+  canWrite?: boolean;
   counts?: { accounts: number; entries: number; products: number; assets: number };
 }
 
