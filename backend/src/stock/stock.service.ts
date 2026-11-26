@@ -15,7 +15,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { JournalService, PostingLine } from '../journal/journal.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../common/decorators';
-import { dec, money, quantity as q3, unitCost as uc4 } from '../common/utils/decimal';
+import { dec, formatQuantity, money, quantity as q3, unitCost as uc4 } from '../common/utils/decimal';
 import { startOfDay } from '../common/utils/date';
 import { CreateStockMovementDto, ListMovementsDto, ReverseStockDto } from './dto/stock.dto';
 
@@ -160,7 +160,7 @@ export class StockService {
           newQty = currentQty.minus(qty);
           if (newQty.lessThan(0) && !company.allowNegativeStock) {
             throw new BadRequestException(
-              `Estoque insuficiente para "${product.name}": disponível ${currentQty.toFixed(3)} ${product.unit}, solicitado ${qty.toFixed(3)} ${product.unit}.`,
+              `Estoque insuficiente para "${product.name}": disponível ${formatQuantity(currentQty)} ${product.unit}, solicitado ${formatQuantity(qty)} ${product.unit}.`,
             );
           }
         }
@@ -224,7 +224,7 @@ export class StockService {
             action: 'CREATE',
             entity: 'StockMovement',
             entityId: movement.id,
-            description: `${TYPE_LABELS[type]}: ${qty.toFixed(3)} ${product.unit} de ${product.name} (${money(totalValue).toFixed(2)}).`,
+            description: `${TYPE_LABELS[type]}: ${formatQuantity(qty)} ${product.unit} de ${product.name} (${money(totalValue).toFixed(2)}).`,
           },
           tx,
         );
@@ -244,7 +244,7 @@ export class StockService {
     totalValue: Prisma.Decimal,
     dto: { documentNumber?: string; description?: string },
   ): string {
-    const base = `${TYPE_LABELS[type]}: ${qty.toFixed(3)} ${product.unit} de ${product.name}`;
+    const base = `${TYPE_LABELS[type]}: ${formatQuantity(qty)} ${product.unit} de ${product.name}`;
     const document = dto.documentNumber ? ` (doc. ${dto.documentNumber})` : '';
     const description = dto.description ? ` — ${dto.description}` : '';
     return `${base}${document}${description}`.slice(0, 300);
@@ -502,7 +502,7 @@ export class StockService {
           newQty = currentQty.minus(qty);
           if (newQty.lessThan(0) && !company.allowNegativeStock) {
             throw new BadRequestException(
-              `Não é possível estornar: o estoque atual de "${movement.product.name}" (${currentQty.toFixed(3)}) é menor que a quantidade da movimentação (${qty.toFixed(3)}).`,
+              `Não é possível estornar: o estoque atual de "${movement.product.name}" (${formatQuantity(currentQty)}) é menor que a quantidade da movimentação (${formatQuantity(qty)}).`,
             );
           }
         } else {
@@ -558,7 +558,7 @@ export class StockService {
             action: 'REVERSE',
             entity: 'StockMovement',
             entityId: movement.id,
-            description: `Movimentação de ${TYPE_LABELS[movement.type]} (${qty.toFixed(3)} ${movement.product.unit}) estornada.`,
+            description: `Movimentação de ${TYPE_LABELS[movement.type]} (${formatQuantity(qty)} ${movement.product.unit}) estornada.`,
             metadata: { reason: dto.reason, entries: entries.length },
           },
           tx,

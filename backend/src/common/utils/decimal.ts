@@ -19,6 +19,12 @@ export function quantity(value: DecimalValue | null | undefined): Prisma.Decimal
   return dec(value).toDecimalPlaces(3, Prisma.Decimal.ROUND_HALF_UP);
 }
 
+/** Formata quantidade para textos em pt-BR, sem zeros à direita (ex.: 4; 0,5; 1,25). */
+export function formatQuantity(value: DecimalValue | null | undefined): string {
+  const text = quantity(value).toFixed(3).replace(/\.?0+$/, '');
+  return (text === '' ? '0' : text).replace('.', ',');
+}
+
 /** Arredonda custos unitários em 4 casas. */
 export function unitCost(value: DecimalValue | null | undefined): Prisma.Decimal {
   return dec(value).toDecimalPlaces(4, Prisma.Decimal.ROUND_HALF_UP);
