@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, Check, ChevronsRight, CircleDot, Plus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import { formatCurrency, formatDate, ROLE_LABELS, SEGMENT_LABELS, STATUS_LABELS, todayISO } from '@/lib/format';
+import { formatCurrency, formatDate, ROLE_LABELS, SEGMENT_LABELS, STATUS_LABELS } from '@/lib/format';
 import type { Account, CompanySummary } from '@/lib/types';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from '@/components/ui/badge';
@@ -45,8 +45,6 @@ export default function EmpresasPage() {
   const [create, setCreate] = React.useState({
     name: '',
     segment: 'COMERCIO',
-    openingDate: todayISO(),
-    initialCapital: '10000',
   });
 
   const [wizard, setWizard] = React.useState<CompanySummary | null>(null);
@@ -78,25 +76,27 @@ export default function EmpresasPage() {
     setSaving(true);
     try {
       const name = create.name.trim();
+      const year = new Date().getFullYear();
       const { data } = await api.post<CompanySummary>('/companies', {
         legalName: name,
         tradeName: name,
         segment: create.segment,
-        openingDate: create.openingDate,
+        openingDate: `${year}-01-01`,
         responsibleName: user?.name || 'Responsável',
-        initialCapital: Number(create.initialCapital) || 0,
+        initialCapital: 0,
       });
-      toast.success('Empresa criada! Conclua a abertura para começar.');
+      toast.success('Empresa criada! Defina o período e o capital para concluir a abertura.');
       setCreateOpen(false);
       await refresh();
+      selectCompany(data.id);
       setWizard(data);
       setStep(1);
       setPeriod({
-        name: `Exercício ${new Date(create.openingDate).getFullYear()}`,
-        startDate: `${new Date(create.openingDate).getFullYear()}-01-01`,
-        endDate: `${new Date(create.openingDate).getFullYear()}-12-31`,
+        name: `Exercício ${year}`,
+        startDate: `${year}-01-01`,
+        endDate: `${year}-12-31`,
       });
-      setCapital(create.initialCapital || '0');
+      setCapital('10000');
       setItems([]);
     } catch (error: any) {
       toast.error(error?.message ?? 'Falha ao criar empresa.');
@@ -114,7 +114,9 @@ export default function EmpresasPage() {
       startDate: `${year}-01-01`,
       endDate: `${year}-12-31`,
     });
-    setCapital(String(Number(target.initialCapital) || 0));
+    setCapital(
+      Number(target.initialCapital) > 0 ? String(Number(target.initialCapital)) : '10000',
+    );
     setItems([]);
   }
 
@@ -129,6 +131,10 @@ export default function EmpresasPage() {
     if (!wizard) return;
     if (!period.name || !period.startDate || !period.endDate) {
       toast.error('Preencha o período contábil.');
+      return;
+    }
+    if (capitalTotal <= 0) {
+      toast.error('Informe o capital social integralizado (maior que zero).');
       return;
     }
     setSaving(true);
@@ -206,7 +212,9 @@ export default function EmpresasPage() {
                   <span className="text-right font-medium text-navy-800">{formatDate(item.openingDate)}</span>
                   <span>Capital</span>
                   <span className="text-right font-medium text-navy-800 tabular">
-                    {formatCurrency(item.initialCapital)}
+                    {item.status === 'DRAFT'
+                      ? 'A definir na abertura'
+                      : formatCurrency(item.initialCapital)}
                   </span>
                   <span>Meu papel</span>
                   <span className="text-right font-medium text-navy-800">
@@ -255,7 +263,7 @@ export default function EmpresasPage() {
           <DialogHeader>
             <DialogTitle>Nova empresa simulada</DialogTitle>
             <DialogDescription>
-              Depois da criação, um assistente guia a abertura: período contábil e patrimônio inicial.
+              Informe o nome. Em seguida, defina o período contábil e o capital social na abertura.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -267,7 +275,7 @@ export default function EmpresasPage() {
                 autoFocus
               />
             </Field>
-            <Field label="Segmento">
+            <Field label="Segmento" className="sm:col-span-2">
               <Select
                 value={create.segment}
                 onValueChange={(value) => setCreate((prev) => ({ ...prev, segment: value }))}
@@ -284,34 +292,13 @@ export default function EmpresasPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Data de abertura" required>
-              <Input
-                type="date"
-                value={create.openingDate}
-                onChange={(event) => setCreate((prev) => ({ ...prev, openingDate: event.target.value }))}
-              />
-            </Field>
-            <Field
-              label="Capital inicial"
-              required
-              hint="Integralizado em dinheiro na abertura."
-              className="sm:col-span-2"
-            >
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={create.initialCapital}
-                onChange={(event) => setCreate((prev) => ({ ...prev, initialCapital: event.target.value }))}
-              />
-            </Field>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancelar
             </Button>
             <Button onClick={submitCreate} disabled={saving}>
-              {saving ? 'Criando…' : 'Criar empresa'}
+              {saving ? 'Criando…' : 'Criar e continuar'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -371,7 +358,7 @@ export default function EmpresasPage() {
             <div className="flex flex-col gap-3">
               <p className="text-body-sm text-slate-500">
                 Adicione bens, direitos e obrigações que a empresa já possui na abertura
-                (opcional). Obras: a conta{" "}
+                (opcional). Obs.: a conta{' '}
                 <strong>Lucros ou Prejuízos Acumulados</strong> receberá o complemento para o
                 balanço fechar.
               </p>
